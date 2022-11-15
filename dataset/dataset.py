@@ -13,12 +13,10 @@ import torch
 import torchvision.transforms as transforms
 from natsort import natsorted
 from PIL import Image
-from torch._utils import _accumulate
-from torch.utils.data import (BatchSampler, ConcatDataset, DataLoader, Dataset,
-                              WeightedRandomSampler)
+from torch.utils.data import ConcatDataset, Dataset
 
 
-class BatchBalancedDataLoader(DataLoader):
+class BatchBalancedDataset(Dataset):
     # my comment: this class implements in a weird way a functionality
     # that's already a responsibility of the DataLoader sampler
 
@@ -38,7 +36,7 @@ class BatchBalancedDataLoader(DataLoader):
             {opt.select_data}\nopt.batch_ratio: {opt.batch_ratio}\n')
         assert len(opt.select_data) == len(opt.batch_ratio)
 
-        _AlignCollate = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD)
+        self.transform = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD)
         self.dataset_list = []
         self.dataset_len_list = []
         batch_size_list = []
@@ -82,24 +80,17 @@ class BatchBalancedDataLoader(DataLoader):
         log.write(Total_batch_size_log + '\n')
         log.close()
         
-        # calculate weight of each dataset depending on its length and opt.batch_ratio
-        total_len = sum(self.dataset_len_list)
-        if len(self.dataset_len_list) == 1:
-            weights = np.ones(total_len)
-        else:
-            weights = [(1-_len/total_len) * float(opt.batch_ratio[i])
-                    for i,_len in enumerate(self.dataset_len_list)]
-            # expand weights to match dataset length
-            weights = np.repeat(weights, self.dataset_len_list)
-        sampler = WeightedRandomSampler(weights,total_len,replacement=False)
-        super().__init__(
-            ConcatDataset(self.dataset_list), 
-            batch_sampler=BatchSampler(
-                sampler,
-                batch_size=opt.batch_size,
-                drop_last=False),
-            num_workers=int(opt.workers),
-            collate_fn=_AlignCollate, pin_memory=True)
+        self.dataset = ConcatDataset(self.dataset_list)
+    
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index):
+        assert index <= len(self), 'index range error'
+        el = self.dataset[index]
+        if self.transform:
+            el = self.transform(el)
+        return el
 
 
 def hierarchical_dataset(root, opt, select_data='/'):
@@ -271,7 +262,7 @@ class ResizeNormalize(object):
         self.interpolation = interpolation
         self.toTensor = transforms.ToTensor()
 
-    def __call__(self, img):
+    def __call__(self, img: Image):
         img = img.resize(self.size, self.interpolation)
         img = self.toTensor(img)
         img.sub_(0.5).div_(0.5)
@@ -286,7 +277,7 @@ class NormalizePAD(object):
         self.max_width_half = math.floor(max_size[2] / 2)
         self.PAD_type = PAD_type
 
-    def __call__(self, img):
+    def __call__(self, img: Image):
         img = self.toTensor(img)
         img.sub_(0.5).div_(0.5)
         c, h, w = img.size()
@@ -305,36 +296,32 @@ class AlignCollate(object):
         self.imgW = imgW
         self.keep_ratio_with_pad = keep_ratio_with_pad
 
-    def __call__(self, batch):
-        batch = filter(lambda x: x is not None, batch)
-        images, labels = zip(*batch)
+    def __call__(self, element):
+        image, label = element
 
         if self.keep_ratio_with_pad:  # same concept with 'Rosetta' paper
             resized_max_w = self.imgW
-            input_channel = 3 if images[0].mode == 'RGB' else 1
+            input_channel = 3 if image.mode == 'RGB' else 1
             transform = NormalizePAD((input_channel, self.imgH, resized_max_w))
 
-            resized_images = []
-            for image in images:
-                w, h = image.size
-                ratio = w / float(h)
-                if math.ceil(self.imgH * ratio) > self.imgW:
-                    resized_w = self.imgW
-                else:
-                    resized_w = math.ceil(self.imgH * ratio)
+            w, h = image.size
+            ratio = w / float(h)
+            if math.ceil(self.imgH * ratio) > self.imgW:
+                resized_w = self.imgW
+            else:
+                resized_w = math.ceil(self.imgH * ratio)
 
-                resized_image = image.resize((resized_w, self.imgH), Image.BICUBIC)
-                resized_images.append(transform(resized_image))
-                # resized_image.save('./image_test/%d_test.jpg' % w)
+            resized_image = image.resize((resized_w, self.imgH), Image.BICUBIC)
+            resized_image = transform(resized_image)
+            # resized_image.save('./image_test/%d_test.jpg' % w)
 
-            image_tensors = torch.cat([t.unsqueeze(0) for t in resized_images], 0)
+            image_tensor = resized_image
 
         else:
             transform = ResizeNormalize((self.imgW, self.imgH))
-            image_tensors = [transform(image) for image in images]
-            image_tensors = torch.cat([t.unsqueeze(0) for t in image_tensors], 0)
+            image_tensor = transform(image)
 
-        return image_tensors, labels
+        return image_tensor, label
 
 
 def tensor2im(image_tensor, imtype=np.uint8):
