@@ -5,6 +5,7 @@ import math
 import os
 import re
 import sys
+from typing import Iterable
 
 import lmdb
 import numpy as np
@@ -16,10 +17,7 @@ from PIL import Image
 from torch.utils.data import ConcatDataset, Dataset
 
 
-class BatchBalancedDataset(Dataset):
-    # my comment: this class implements in a weird way a functionality
-    # that's already a responsibility of the DataLoader sampler
-
+class BatchBalancedDataset(ConcatDataset):
     def __init__(self, opt):
         """
         Modulate the data ratio in the batch.
@@ -36,7 +34,6 @@ class BatchBalancedDataset(Dataset):
             {opt.select_data}\nopt.batch_ratio: {opt.batch_ratio}\n')
         assert len(opt.select_data) == len(opt.batch_ratio)
 
-        self.transform = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD)
         self.dataset_list = []
         self.dataset_len_list = []
         batch_size_list = []
@@ -45,10 +42,10 @@ class BatchBalancedDataset(Dataset):
             _batch_size = max(round(opt.batch_size * float(batch_ratio_d)), 1)
             print(dashed_line)
             log.write(dashed_line + '\n')
-            _dataset, _dataset_log = hierarchical_dataset(
+            _dataset = HierarchicalDataset(
                 root=opt.train_data, opt=opt, select_data=[selected_d])
             total_number_dataset = len(_dataset)
-            log.write(_dataset_log)
+            log.write(_dataset.log)
 
             """
             The total number of data can be modified with opt.total_data_usage_ratio.
@@ -80,52 +77,51 @@ class BatchBalancedDataset(Dataset):
         log.write(Total_batch_size_log + '\n')
         log.close()
         
-        self.dataset = ConcatDataset(self.dataset_list)
-    
-    def __len__(self):
-        return len(self.dataset)
+        super().__init__(self.dataset_list)
 
+
+class HierarchicalDataset(ConcatDataset):
+    """ select_data='/' contains all sub-directory of root directory """
+    def __init__(self, root, opt, select_data='/') -> None:
+        
+        self.transform = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD)
+
+        dataset_list = []
+        dataset_log = f'dataset_root:    {root}\t dataset: {select_data[0]}'
+        print(dataset_log)
+        dataset_log += '\n'
+        for dirpath, dirnames, filenames in os.walk(root+'/'):
+            if not dirnames:
+                select_flag = False
+                for selected_d in select_data:
+                    if selected_d in dirpath:
+                        select_flag = True
+                        break
+
+                if select_flag:
+                    dataset = LmdbDataset(dirpath, opt)
+                    sub_dataset_log = f'sub-directory:\t/{os.path.relpath(dirpath, root)}\t num samples: {len(dataset)}'
+                    print(sub_dataset_log)
+                    dataset_log += f'{sub_dataset_log}\n'
+                    dataset_list.append(dataset)
+
+                    # Export predictions only when testing
+                    # because dir `/result/{opt.exp_name}` is created only during testing,
+                    # but this function is also be called by train.py.
+                    if hasattr(opt, 'eval_data'):
+                        eval_dir = opt.eval_data.split("/")[-1]
+                        with open(f"./result/{opt.exp_name}/log_filtered_index_list_{eval_dir}.txt", "a", encoding="utf-8") as f:
+                            for e in dataset.filtered_index_list:
+                                f.write(f"{e}\n")
+        self.log = dataset_log
+        super().__init__(dataset_list)
+    
     def __getitem__(self, index):
         assert index <= len(self), 'index range error'
-        el = self.dataset[index]
+        sample = super().__getitem__(index)
         if self.transform:
-            el = self.transform(el)
-        return el
-
-
-def hierarchical_dataset(root, opt, select_data='/'):
-    """ select_data='/' contains all sub-directory of root directory """
-    dataset_list = []
-    dataset_log = f'dataset_root:    {root}\t dataset: {select_data[0]}'
-    print(dataset_log)
-    dataset_log += '\n'
-    for dirpath, dirnames, filenames in os.walk(root+'/'):
-        if not dirnames:
-            select_flag = False
-            for selected_d in select_data:
-                if selected_d in dirpath:
-                    select_flag = True
-                    break
-
-            if select_flag:
-                dataset = LmdbDataset(dirpath, opt)
-                sub_dataset_log = f'sub-directory:\t/{os.path.relpath(dirpath, root)}\t num samples: {len(dataset)}'
-                print(sub_dataset_log)
-                dataset_log += f'{sub_dataset_log}\n'
-                dataset_list.append(dataset)
-
-                # Export predictions only when testing
-                # because dir `/result/{opt.exp_name}` is created only during testing,
-                # but this function is also be called by train.py.
-                if hasattr(opt, 'eval_data'):
-                    eval_dir = opt.eval_data.split("/")[-1]
-                    with open(f"./result/{opt.exp_name}/log_filtered_index_list_{eval_dir}.txt", "a", encoding="utf-8") as f:
-                        for e in dataset.filtered_index_list:
-                            f.write(f"{e}\n")
-
-    concatenated_dataset = ConcatDataset(dataset_list)
-
-    return concatenated_dataset, dataset_log
+            sample = self.transform(sample)
+        return sample
 
 
 class LmdbDataset(Dataset):

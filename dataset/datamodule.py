@@ -5,7 +5,7 @@ import torchvision
 from kornia import tensor_to_image
 from torch.utils.data import BatchSampler, DataLoader, WeightedRandomSampler
 
-from dataset import BatchBalancedDataset
+from dataset import BatchBalancedDataset, HierarchicalDataset
 
 
 class WordsDataModule(pl.LightningDataModule):
@@ -34,8 +34,12 @@ class WordsDataModule(pl.LightningDataModule):
             plt.title("augmented")
             plt.imshow(_to_vis(imgs_aug))
     
-    def setup(self, stage=None):
+    def setup(self, stage:str = None):
+        if stage == "fit" or stage is None:
             self.dataset_train = BatchBalancedDataset(self.opt)
+            self.dataset_val = HierarchicalDataset(
+                root=self.opt.valid_data, 
+                opt=self.opt)
 
     def on_after_batch_transfer(self, batch, dataloader_idx):
         imgs, labels = batch
@@ -60,5 +64,12 @@ class WordsDataModule(pl.LightningDataModule):
                 sampler,
                 batch_size=self.opt.batch_size,
                 drop_last=False),
+            num_workers=int(self.opt.workers),
+            pin_memory=True)
+        
+    def val_dataloader(self):
+        return DataLoader(
+            self.dataset_val, 
+            batch_size=self.opt.batch_size,
             num_workers=int(self.opt.workers),
             pin_memory=True)
