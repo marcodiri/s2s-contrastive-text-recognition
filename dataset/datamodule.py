@@ -35,11 +35,19 @@ class WordsDataModule(pl.LightningDataModule):
             plt.imshow(_to_vis(imgs_aug))
     
     def setup(self, stage:str = None):
+        log = open(f'./saved_models/{self.opt.exp_name}/log_dataset.txt', 'a')
+        
         if stage == "fit" or stage is None:
             self.dataset_train = BatchBalancedDataset(self.opt)
+            log.write(self.dataset_train.log)
             self.dataset_val = HierarchicalDataset(
                 root=self.opt.valid_data, 
                 opt=self.opt)
+            log.write(self.dataset_val.log)
+            print('-' * 80)
+            
+        log.write('-' * 80 + '\n')
+        log.close()
 
     def on_after_batch_transfer(self, batch, dataloader_idx):
         imgs, labels = batch
@@ -69,7 +77,8 @@ class WordsDataModule(pl.LightningDataModule):
         
     def val_dataloader(self):
         return DataLoader(
-            self.dataset_val, 
+            self.dataset_val,
             batch_size=self.opt.batch_size,
+            shuffle=True,  # 'True' to check training progress with validation function.
             num_workers=int(self.opt.workers),
             pin_memory=True)
