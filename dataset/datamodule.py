@@ -1,11 +1,15 @@
+from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
+import torch
 import torchvision
 from kornia import tensor_to_image
-from torch.utils.data import BatchSampler, DataLoader, WeightedRandomSampler
+from torch.utils.data import BatchSampler, DataLoader, WeightedRandomSampler, default_collate
 
-from dataset import BatchBalancedDataset, HierarchicalDataset
+from dataset.converter import (AttnLabelConverter, CTCLabelConverter,
+                               CTCLabelConverterForBaiduWarpctc)
+from dataset.dataset import BatchBalancedDataset, HierarchicalDataset
 
 
 class WordsDataModule(pl.LightningDataModule):
@@ -13,6 +17,15 @@ class WordsDataModule(pl.LightningDataModule):
         super().__init__()
         self.opt = opt
         self.transform = tranform
+        
+        if 'CTC' in opt.Prediction:
+            if opt.baiduCTC:
+                self.label_converter = CTCLabelConverterForBaiduWarpctc(opt.character)
+            else:
+                self.label_converter = CTCLabelConverter(opt.character)
+        else:
+            self.label_converter = AttnLabelConverter(opt.character)
+        opt.num_class = len(self.label_converter.character)
 
     def show_batch(self, win_size=(10, 10)):
         def _to_vis(data):
@@ -48,12 +61,12 @@ class WordsDataModule(pl.LightningDataModule):
             
         log.write('-' * 80 + '\n')
         log.close()
-
+        
     def on_after_batch_transfer(self, batch, dataloader_idx):
-        imgs, labels = batch
+        imgs, labels, lengths = batch
         if self.transform:
             imgs = self.transform(imgs)
-        return imgs, labels
+        return (imgs, labels, lengths)
 
     def train_dataloader(self):
         # calculate weight of each dataset depending on its length and opt.batch_ratio
@@ -72,6 +85,7 @@ class WordsDataModule(pl.LightningDataModule):
                 sampler,
                 batch_size=self.opt.batch_size,
                 drop_last=False),
+            collate_fn=self.convert_collate,
             num_workers=int(self.opt.workers),
             pin_memory=True)
         
@@ -80,5 +94,14 @@ class WordsDataModule(pl.LightningDataModule):
             self.dataset_val,
             batch_size=self.opt.batch_size,
             shuffle=True,  # 'True' to check training progress with validation function.
+            collate_fn=self.convert_collate,
             num_workers=int(self.opt.workers),
             pin_memory=True)
+
+    def convert_collate(self, data):
+        """Use self.converter to convert text labels into tensors"""
+        imgs, labels = default_collate(data)
+        tensor_labels, lengths = self.label_converter.encode(
+            labels, 
+            batch_max_length=self.opt.batch_max_length)
+        return (imgs, tensor_labels, lengths)
