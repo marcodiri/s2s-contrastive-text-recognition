@@ -1,3 +1,4 @@
+from os import path
 from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,7 +49,7 @@ class WordsDataModule(pl.LightningDataModule):
             plt.imshow(_to_vis(imgs_aug))
     
     def setup(self, stage:str = None):
-        log = open(f'./saved_models/{self.opt.exp_name}/log_dataset.txt', 'a')
+        log = open(path.join(self.opt.save_dir, self.opt.exp_name, 'log_dataset.txt'), 'a')
         
         if stage == "fit" or stage is None:
             self.dataset_train = BatchBalancedDataset(self.opt)

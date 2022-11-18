@@ -3,6 +3,7 @@
 **/data_lmdb_release/*
 **/image_release/*
 **/result/*
+lightning_logs/
 *.mdb
 *.pth
 *.tar
