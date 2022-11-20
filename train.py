@@ -1,27 +1,16 @@
 import os
 from os import path
-import re
-import sys
-import time
-import random
 import string
 import argparse
 
 import torch
 import torch.backends.cudnn as cudnn
-import torch.nn.init as init
-import torch.optim as optim
 import torch.utils.data
-import torch.nn as nn
-import torch.nn.functional as F
-import torchmetrics
-import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint, Checkpoint, Callback
+from pytorch_lightning.callbacks import ModelCheckpoint, Timer
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
-import numpy as np
 
-from dataset import BatchBalancedDataset, WordsDataModule
+from dataset import WordsDataModule
 from model import BaseModel, TxtRecModule
 
 
@@ -55,6 +44,11 @@ def train(opt):
         dirpath=path.join(opt.save_dir, model.hparams.opt.exp_name),
         every_n_train_steps=1000,
     )
+    class Timer_(Timer):
+        def on_train_epoch_end(self, trainer: Trainer, *args, **kwargs):
+            self.log("train_elapsed_time", self.time_elapsed("train"))
+    timer = Timer_()
+    
     logger_tb = TensorBoardLogger(
         save_dir=path.join(opt.save_dir, model.hparams.opt.exp_name, 'tb'))
     logger_csv = CSVLogger(
@@ -66,7 +60,7 @@ def train(opt):
         max_steps=model.hparams.opt.num_iter,
         check_val_every_n_epoch=None,
         val_check_interval=model.hparams.opt.val_interval,
-        callbacks=[checkpoint_callback],
+        callbacks=[timer, checkpoint_callback],
         logger=[logger_tb, logger_csv])
     
     if opt.saved_model != '':
