@@ -94,7 +94,7 @@ class WordsDataModule(pl.LightningDataModule):
         return DataLoader(
             self.dataset_val,
             batch_size=self.opt.batch_size,
-            shuffle=True,  # 'True' to check training progress with validation function.
+            shuffle=False,
             collate_fn=self.convert_collate,
             num_workers=int(self.opt.workers),
             pin_memory=True)
