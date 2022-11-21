@@ -128,18 +128,10 @@ class TxtRecModule(pl.LightningModule):
         return optimizer
     
     def configure_callbacks(self):
-        compute_metrics = self.ComputeMetrics()
-        base_checkpoint = self.CheckpointBaseModel()
-        return [compute_metrics, base_checkpoint]
+        compute_metrics = self._ComputeMetrics()
+        return [compute_metrics]
     
-    class CheckpointBaseModel(Checkpoint):
-        def on_save_checkpoint(self, trainer, pl_module, checkpoint):
-            torch.save(pl_module.model.state_dict(), 
-                       path.join(pl_module.hparams.opt.save_dir,
-                                 pl_module.hparams.opt.exp_name,
-                                 'base_model.pth'))
-    
-    class ComputeMetrics(Callback):
+    class _ComputeMetrics(Callback):
         def on_train_batch_end(self, trainer, pl_module, outputs, batch,
                                batch_idx):
             pl_module.log("train_loss", outputs["loss"], prog_bar=False)

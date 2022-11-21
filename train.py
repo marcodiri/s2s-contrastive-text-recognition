@@ -40,14 +40,40 @@ def train(opt):
     else:
         model = TxtRecModule(base, opt)
     
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=path.join(opt.save_dir, model.hparams.opt.exp_name),
-        every_n_train_steps=1000,
+    checkpoint_latest_path = path.join(
+        opt.save_dir,
+        model.hparams.opt.exp_name, 'latest')
+    checkpoint_best_path = path.join(
+        opt.save_dir,
+        model.hparams.opt.exp_name, 'best')
+    os.makedirs(checkpoint_latest_path, exist_ok=True)
+    os.makedirs(checkpoint_best_path, exist_ok=True)
+    
+    class BaseModelCheckpoint(ModelCheckpoint):
+        def _save_checkpoint(self, trainer, filepath):
+            # override base function to also save BaseModel
+            torch.save(trainer.model.model.state_dict(), 
+                       path.join(self.dirpath,
+                                 'base_model.pth'))
+            super()._save_checkpoint(trainer, filepath)
+    checkpoint_best = BaseModelCheckpoint(
+        dirpath=checkpoint_best_path,
+        filename='{epoch}-{step}-{train_loss:.2f}-{val_loss:.2f}',
+        monitor='val_loss',
+        mode='min',
+        save_on_train_epoch_end=False
     )
-    class Timer_(Timer):
+    checkpoint_latest = BaseModelCheckpoint(
+        dirpath=checkpoint_latest_path,
+        filename='{epoch}-{step}',
+        every_n_epochs=1,
+        save_on_train_epoch_end=True
+    )
+        
+    class TimerLog(Timer):
         def on_train_epoch_end(self, trainer: Trainer, *args, **kwargs):
             self.log("train_elapsed_time", self.time_elapsed("train"))
-    timer = Timer_()
+    timer = TimerLog()
     
     logger_tb = TensorBoardLogger(
         save_dir=path.join(opt.save_dir, model.hparams.opt.exp_name, 'tb'))
@@ -57,10 +83,11 @@ def train(opt):
     trainer = Trainer(
         accelerator="auto",
         devices="auto",
-        max_steps=model.hparams.opt.num_iter,
+        max_steps=opt.num_iter,
         check_val_every_n_epoch=None,
-        val_check_interval=model.hparams.opt.val_interval,
-        callbacks=[timer, checkpoint_callback],
+        val_check_interval=opt.val_interval,
+        callbacks=[timer, checkpoint_best, checkpoint_latest],
+        log_every_n_steps=50,
         logger=[logger_tb, logger_csv])
     
     if opt.saved_model != '':
@@ -140,7 +167,7 @@ if __name__ == '__main__':
 
 
     cudnn.benchmark = True
-    cudnn.deterministic = True
+    # cudnn.deterministic = True
     opt.num_gpu = torch.cuda.device_count()
     # print('device count', opt.num_gpu)
     if opt.num_gpu > 1:
