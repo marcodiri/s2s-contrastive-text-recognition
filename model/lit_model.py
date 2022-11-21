@@ -125,7 +125,23 @@ class TxtRecModule(pl.LightningModule):
                 eps=self.hparams.opt.eps)
         print("Optimizer:")
         print(optimizer)
-        return optimizer
+        if self.hparams.opt.plateau:
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode='min',
+                factor=self.hparams.opt.plateau,
+                verbose=True,
+                patience=self.hparams.opt.patience)
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": "val_loss",
+                    "frequency": self.hparams.opt.val_interval
+                },
+            }
+        else:
+            return optimizer
     
     def configure_callbacks(self):
         compute_metrics = self._ComputeMetrics()

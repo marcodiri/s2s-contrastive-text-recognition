@@ -76,10 +76,17 @@ def train(opt):
             self.log("train_elapsed_time", self.time_elapsed("train"))
     timer = TimerLog()
     
-    early_stopping = EarlyStopping(
-        monitor='val_loss',
-        mode='min',
-        patience=opt.patience)
+    callbacks=[timer,
+               checkpoint_best,
+               checkpoint_latest]
+    
+    if opt.earlystopping:
+        early_stopping = EarlyStopping(
+            monitor='val_loss',
+            mode='min',
+            patience=opt.patience*2-1,
+            verbose=True)
+        callbacks.append(early_stopping)
     
     logger_tb = TensorBoardLogger(
         save_dir=path.join(opt.save_dir, model.hparams.opt.exp_name, 'tb'))
@@ -91,13 +98,9 @@ def train(opt):
         devices="auto",
         benchmark=True,
         max_steps=opt.num_iter,
-        check_val_every_n_epoch=None,
-        val_check_interval=opt.val_interval,
+        check_val_every_n_epoch=opt.val_interval,
         gradient_clip_val=opt.grad_clip,
-        callbacks=[timer,
-                   early_stopping,
-                   checkpoint_best,
-                   checkpoint_latest],
+        callbacks=callbacks,
         log_every_n_steps=50,
         logger=[logger_tb, logger_csv])
     
@@ -116,13 +119,20 @@ if __name__ == '__main__':
     parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
     parser.add_argument('--batch_size', type=int, default=192, help='input batch size')
     parser.add_argument('--num_iter', type=int, default=300000, help='number of iterations to train for')
-    parser.add_argument('--val_interval', type=int, default=2000, help='Interval between each validation')
+    parser.add_argument('--val_interval', type=int, default=8, help='Epochs between each validation')
     parser.add_argument('--save_dir', default='saved_models', help="path where to save logs and checkpoints")
     parser.add_argument('--saved_model', default='', help="path to Lightning module to continue training; \
         base_model.pth must be present in the same directory")
     parser.add_argument('--FT', action='store_true', help='whether to do fine-tuning')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is Adadelta)')
     parser.add_argument('--lr', type=float, default=1, help='learning rate, default=1.0 for Adadelta')
+    parser.add_argument('--plateau', type=float, default=0.1, help='if != 0, \
+        the learning rate will be reduced by the --plateau factor if \
+        the validation loss does not improve for --patience rounds. \
+        default=0.1')
+    parser.add_argument('--patience', type=int, default=5, help='patience for the plateau scheduler')
+    parser.add_argument('--earlystopping', action='store_true', help='Whether to use early stopping. \
+        The patience will be set to --patience*2-1')
     parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.9')
     parser.add_argument('--rho', type=float, default=0.95, help='decay rate rho for Adadelta. default=0.95')
     parser.add_argument('--eps', type=float, default=1e-8, help='eps for Adadelta. default=1e-8')
@@ -156,7 +166,6 @@ if __name__ == '__main__':
     parser.add_argument('--output_channel', type=int, default=512,
                         help='the number of output channel of Feature extractor')
     parser.add_argument('--hidden_size', type=int, default=256, help='the size of the LSTM hidden state')
-    parser.add_argument('--patience', type=int, default=5, help='patience for the early stopping')
 
     opt = parser.parse_args()
 
