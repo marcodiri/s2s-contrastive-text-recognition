@@ -4,7 +4,6 @@ import string
 from os import path
 
 import torch
-import torch.backends.cudnn as cudnn
 import torch.utils.data
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, Timer
@@ -90,6 +89,7 @@ def train(opt):
     trainer = Trainer(
         accelerator="auto",
         devices="auto",
+        benchmark=True,
         max_steps=opt.num_iter,
         check_val_every_n_epoch=None,
         val_check_interval=opt.val_interval,
@@ -175,9 +175,6 @@ if __name__ == '__main__':
     # print("Random Seed: ", opt.manualSeed)
     seed_everything(opt.manualSeed, workers=True)
 
-
-    cudnn.benchmark = True
-    # cudnn.deterministic = True
     opt.num_gpu = torch.cuda.device_count()
     # print('device count', opt.num_gpu)
     if opt.num_gpu > 1:
