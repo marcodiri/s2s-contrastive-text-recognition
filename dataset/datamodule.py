@@ -1,12 +1,15 @@
+from math import ceil
 from os import path
 from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import torchvision
 from kornia import tensor_to_image
-from torch.utils.data import BatchSampler, DataLoader, WeightedRandomSampler, default_collate
+from torch.utils.data import (BatchSampler, DataLoader, WeightedRandomSampler,
+                              default_collate)
 
 from dataset.converter import (AttnLabelConverter, CTCLabelConverter,
                                CTCLabelConverterForBaiduWarpctc)
@@ -49,18 +52,31 @@ class WordsDataModule(pl.LightningDataModule):
             plt.imshow(_to_vis(imgs_aug))
     
     def setup(self, stage:str = None):
-        log = open(path.join(self.opt.save_dir, self.opt.exp_name, 'log_dataset.txt'), 'a')
+        log = open(path.join(self.opt.save_dir,
+                             self.opt.exp_name, 'log_dataset.txt'),
+                   'a')
         
         if stage == "fit" or stage is None:
             self.dataset_train = BatchBalancedDataset(self.opt)
+            self.train_batches = ceil(
+                len(self.dataset_train)/self.opt.batch_size)
+            train_batches_log = f'Training batches: {self.train_batches}\n'\
+                + '-' * 80 + '\n' + '-' * 80 + '\n'
+            self.dataset_train.log += train_batches_log
+            print(self.dataset_train.log)
             log.write(self.dataset_train.log)
+            
             self.dataset_val = HierarchicalDataset(
                 root=self.opt.valid_data, 
                 opt=self.opt)
+            self.val_batches = ceil(
+                len(self.dataset_val)/self.opt.batch_size)
+            val_batches_log = f'Validation batches: {self.val_batches}\n'\
+                + '-' * 80 + '\n'
+            self.dataset_val.log += val_batches_log
+            print(self.dataset_val.log)
             log.write(self.dataset_val.log)
-            print('-' * 80)
             
-        log.write('-' * 80 + '\n')
         log.close()
         
     def on_after_batch_transfer(self, batch, dataloader_idx):
