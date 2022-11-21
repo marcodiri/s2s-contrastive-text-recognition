@@ -1,14 +1,14 @@
-import os
-from os import path
-import string
 import argparse
+import os
+import string
+from os import path
 
 import torch
 import torch.backends.cudnn as cudnn
 import torch.utils.data
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint, Timer
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, Timer
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 
 from dataset import WordsDataModule
 from model import BaseModel, TxtRecModule
@@ -26,6 +26,7 @@ def train(opt):
     
     data = WordsDataModule(opt)
     
+    # Model creation/loading
     base = BaseModel(opt)
     if opt.saved_model != '':
         base_path = '/'.join(opt.saved_model.split('/')[:-1])
@@ -40,6 +41,7 @@ def train(opt):
     else:
         model = TxtRecModule(base, opt)
     
+    # Trainer setup + callbacks + loggers
     checkpoint_latest_path = path.join(
         opt.save_dir,
         model.hparams.opt.exp_name, 'latest')
@@ -75,6 +77,11 @@ def train(opt):
             self.log("train_elapsed_time", self.time_elapsed("train"))
     timer = TimerLog()
     
+    early_stopping = EarlyStopping(
+        monitor='val_loss',
+        mode='min',
+        patience=opt.patience)
+    
     logger_tb = TensorBoardLogger(
         save_dir=path.join(opt.save_dir, model.hparams.opt.exp_name, 'tb'))
     logger_csv = CSVLogger(
@@ -86,7 +93,10 @@ def train(opt):
         max_steps=opt.num_iter,
         check_val_every_n_epoch=None,
         val_check_interval=opt.val_interval,
-        callbacks=[timer, checkpoint_best, checkpoint_latest],
+        callbacks=[early_stopping,
+                   timer,
+                   checkpoint_best,
+                   checkpoint_latest],
         log_every_n_steps=50,
         logger=[logger_tb, logger_csv])
     
