@@ -102,7 +102,7 @@ def train(opt):
     
     trainer = Trainer(
         accelerator="auto",
-        devices="auto",
+        devices=1,
         benchmark=True,
         max_steps=opt.num_iter,
         check_val_every_n_epoch=opt.val_interval,
@@ -191,14 +191,5 @@ if __name__ == '__main__':
     """ Seed and GPU setting """
     # print("Random Seed: ", opt.manualSeed)
     seed_everything(opt.manualSeed, workers=True)
-
-    opt.num_gpu = torch.cuda.device_count()
-    # print('device count', opt.num_gpu)
-    if opt.num_gpu > 1:
-        print('------ Use multi-GPU setting ------')
-        print('if you stuck too long time with multi-GPU setting, try to set --workers 0')
-        # check multi-GPU issue https://github.com/clovaai/deep-text-recognition-benchmark/issues/1
-        opt.workers = opt.workers * opt.num_gpu
-        opt.batch_size = opt.batch_size * opt.num_gpu
 
     train(opt)
