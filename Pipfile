@@ -4,19 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+matplotlib = "*"
+lmdb = "*"
 torch = "*"
 torchvision = "*"
-ipykernel = "*"
 pandas = "*"
 kornia = "*"
 torchmetrics = "*"
 pytorch-lightning = "*"
-ipywidgets = "*"
-kaggle = "*"
 natsort = "*"
+kaggle = "*"
+importlib-metadata = "*"
 
 [dev-packages]
-pylint = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.7"
