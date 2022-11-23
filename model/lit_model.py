@@ -85,6 +85,7 @@ class TxtRecModule(pl.LightningModule):
                 preds_index = preds_index.view(-1)
             else:
                 _, preds_index = preds.max(2)
+            # TODO: compute accuracy for CTC
             return {"loss": loss,
                     "preds_index": preds_index,
                     "preds_size": preds_size}
@@ -126,9 +127,13 @@ class TxtRecModule(pl.LightningModule):
         print("Optimizer:")
         print(optimizer)
         if self.hparams.opt.plateau:
+            print(f"""Enabled ReduceLROnPlateau scheduler: {{
+                monitor: val_acc,
+                reduction factor: {self.hparams.opt.plateau},
+                patience: {self.hparams.opt.patience}}}""")
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer,
-                mode='min',
+                mode='max',
                 factor=self.hparams.opt.plateau,
                 verbose=True,
                 patience=self.hparams.opt.patience)
@@ -136,7 +141,7 @@ class TxtRecModule(pl.LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val_loss",
+                    "monitor": "val_acc",
                     "frequency": self.hparams.opt.val_interval
                 },
             }
@@ -167,6 +172,7 @@ class TxtRecModule(pl.LightningModule):
                 outputs["target"],
                 outputs["length_for_loss"])
             if 'CTC' in pl_module.hparams.opt.Prediction:
+                # TODO: log accuracy for CTC or ReduceLROnPlateau will crash
                 self.preds_str = converter.decode(
                     outputs["preds_index"].data,
                     outputs["preds_size"].data)

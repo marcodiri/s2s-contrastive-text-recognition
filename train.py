@@ -6,7 +6,8 @@ from os import path
 import torch
 import torch.utils.data
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, Timer
+from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
+                                         ModelCheckpoint, Timer)
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 
 from dataset import WordsDataModule
@@ -43,10 +44,10 @@ def train(opt):
     # Trainer setup + callbacks + loggers
     checkpoint_latest_path = path.join(
         opt.save_dir,
-        model.hparams.opt.exp_name, 'latest')
+        opt.exp_name, 'latest')
     checkpoint_best_path = path.join(
         opt.save_dir,
-        model.hparams.opt.exp_name, 'best')
+        opt.exp_name, 'best')
     os.makedirs(checkpoint_latest_path, exist_ok=True)
     os.makedirs(checkpoint_best_path, exist_ok=True)
     
@@ -76,22 +77,28 @@ def train(opt):
             self.log("train_elapsed_time", self.time_elapsed("train"))
     timer = TimerLog()
     
+    lr_monitor = LearningRateMonitor()
+    
     callbacks=[timer,
+               lr_monitor,
                checkpoint_best,
                checkpoint_latest]
     
     if opt.earlystopping:
+        patience = opt.patience*2-1
         early_stopping = EarlyStopping(
-            monitor='val_loss',
-            mode='min',
-            patience=opt.patience*2-1,
+            monitor='val_acc',
+            mode='max',
+            patience=patience,
             verbose=True)
         callbacks.append(early_stopping)
+        print(f"Enabled EarlyStopping with patience {patience}")
+    
     
     logger_tb = TensorBoardLogger(
-        save_dir=path.join(opt.save_dir, model.hparams.opt.exp_name, 'tb'))
+        save_dir=path.join(opt.save_dir, opt.exp_name, 'tb'))
     logger_csv = CSVLogger(
-        save_dir=path.join(opt.save_dir, model.hparams.opt.exp_name, 'csv'))
+        save_dir=path.join(opt.save_dir, opt.exp_name, 'csv'))
     
     trainer = Trainer(
         accelerator="auto",
