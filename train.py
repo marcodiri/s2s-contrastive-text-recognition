@@ -29,14 +29,10 @@ def train(opt):
     # Model creation/loading
     base = BaseModel(opt)
     if opt.saved_model != '':
-        base_path = '/'.join(opt.saved_model.split('/')[:-1])
-        base_path += "/base_model.pth"
-        print(f'Loading pretrained model from {base_path}')
         if opt.FT:
-            base.load_state_dict(torch.load(base_path), strict=False)
+            model = TxtRecModule.load_from_checkpoint(opt.saved_model, strict=False, model=base)
         else:
-            base.load_state_dict(torch.load(base_path))
-        model = TxtRecModule.load_from_checkpoint(opt.saved_model, model=base)
+            model = TxtRecModule.load_from_checkpoint(opt.saved_model, model=base)
         model.hparams.opt.save_dir = opt.save_dir
     else:
         model = TxtRecModule(base, opt)
@@ -51,21 +47,14 @@ def train(opt):
     os.makedirs(checkpoint_latest_path, exist_ok=True)
     os.makedirs(checkpoint_best_path, exist_ok=True)
     
-    class BaseModelCheckpoint(ModelCheckpoint):
-        def _save_checkpoint(self, trainer, filepath):
-            # override base function to also save BaseModel
-            torch.save(trainer.model.model.state_dict(), 
-                       path.join(self.dirpath,
-                                 'base_model.pth'))
-            super()._save_checkpoint(trainer, filepath)
-    checkpoint_best = BaseModelCheckpoint(
+    checkpoint_best = ModelCheckpoint(
         dirpath=checkpoint_best_path,
         filename='{epoch}-{step}-{train_loss:.2f}-{val_loss:.2f}',
         monitor='val_loss',
         mode='min',
         save_on_train_epoch_end=False
     )
-    checkpoint_latest = BaseModelCheckpoint(
+    checkpoint_latest = ModelCheckpoint(
         dirpath=checkpoint_latest_path,
         filename='{epoch}-{step}',
         every_n_epochs=1,
@@ -93,7 +82,6 @@ def train(opt):
             verbose=True)
         callbacks.append(early_stopping)
         print(f"Enabled EarlyStopping with patience {patience}")
-    
     
     logger_tb = TensorBoardLogger(
         save_dir=path.join(opt.save_dir, opt.exp_name, 'tb'))
