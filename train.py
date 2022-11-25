@@ -3,15 +3,13 @@ import os
 import string
 from os import path
 
-import torch
-import torch.utils.data
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
                                          ModelCheckpoint, Timer)
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 
 from dataset import WordsDataModule
-from model import BaseModel, TxtRecModule
+from model import Encoder, Decoder, TxtRecModule
 
 
 def train(opt):
@@ -27,15 +25,23 @@ def train(opt):
     data = WordsDataModule(opt)
     
     # Model creation/loading
-    base = BaseModel(opt)
+    encoder = Encoder(opt)
+    decoder = Decoder(encoder.SequenceModeling_output, opt)
     if opt.saved_model != '':
         if opt.FT:
-            model = TxtRecModule.load_from_checkpoint(opt.saved_model, strict=False, model=base)
+            model = TxtRecModule.load_from_checkpoint(
+                opt.saved_model,
+                strict=False,
+                encoder=encoder,
+                decoder=decoder)
         else:
-            model = TxtRecModule.load_from_checkpoint(opt.saved_model, model=base)
+            model = TxtRecModule.load_from_checkpoint(
+                opt.saved_model,
+                encoder=encoder,
+                decoder=decoder)
         model.hparams.opt.save_dir = opt.save_dir
     else:
-        model = TxtRecModule(base, opt)
+        model = TxtRecModule(encoder, decoder, opt)
     
     # Trainer setup + callbacks + loggers
     checkpoint_latest_path = path.join(
@@ -63,7 +69,8 @@ def train(opt):
         
     class TimerLog(Timer):
         def on_train_epoch_end(self, trainer: Trainer, *args, **kwargs):
-            self.log("train_elapsed_time", self.time_elapsed("train"))
+            trainer.model.log("train_elapsed_time",
+                              self.time_elapsed("train"))
     timer = TimerLog()
     
     lr_monitor = LearningRateMonitor()

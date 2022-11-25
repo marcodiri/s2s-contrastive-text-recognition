@@ -1,17 +1,6 @@
 """
-Copyright (c) 2019-present NAVER Corp.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+a modified version of deep-text-recognition-benchmark repository
+https://github.com/clovaai/deep-text-recognition-benchmark/blob/68a80fe97943a111ff1efaf52a63ad8f0f1c0e5d/model.py
 """
 
 import torch.nn as nn
@@ -22,10 +11,9 @@ from .modules.sequence_modeling import BidirectionalLSTM
 from .modules.prediction import Attention
 
 
-class BaseModel(nn.Module):
-
+class Encoder(nn.Module):
     def __init__(self, opt):
-        super(BaseModel, self).__init__()
+        super(Encoder, self).__init__()
         self.opt = opt
         self.stages = {'Trans': opt.Transformation, 'Feat': opt.FeatureExtraction,
                        'Seq': opt.SequenceModeling, 'Pred': opt.Prediction}
@@ -59,15 +47,7 @@ class BaseModel(nn.Module):
             print('No SequenceModeling module specified')
             self.SequenceModeling_output = self.FeatureExtraction_output
 
-        """ Prediction """
-        if opt.Prediction == 'CTC':
-            self.Prediction = nn.Linear(self.SequenceModeling_output, opt.num_class)
-        elif opt.Prediction == 'Attn':
-            self.Prediction = Attention(self.SequenceModeling_output, opt.hidden_size, opt.num_class)
-        else:
-            raise Exception('Prediction is neither CTC or Attn')
-
-    def forward(self, input, text, is_train=True):
+    def forward(self, input):
         """ Transformation stage """
         if not self.stages['Trans'] == "None":
             input = self.Transformation(input)
@@ -83,10 +63,28 @@ class BaseModel(nn.Module):
         else:
             contextual_feature = visual_feature  # for convenience. this is NOT contextually modeled by BiLSTM
 
+        return contextual_feature
+
+
+class Decoder(nn.Module):
+    def __init__(self, in_features, opt):
+        super(Decoder, self).__init__()
+        self.opt = opt
+        self.stages = {'Pred': opt.Prediction}
+
+        """ Prediction """
+        if opt.Prediction == 'CTC':
+            self.Prediction = nn.Linear(in_features, opt.num_class)
+        elif opt.Prediction == 'Attn':
+            self.Prediction = Attention(in_features, opt.hidden_size, opt.num_class)
+        else:
+            raise Exception('Prediction is neither CTC or Attn')
+
+    def forward(self, input, text, is_train=True):
         """ Prediction stage """
         if self.stages['Pred'] == 'CTC':
-            prediction = self.Prediction(contextual_feature.contiguous())
+            prediction = self.Prediction(input.contiguous())
         else:
-            prediction = self.Prediction(contextual_feature.contiguous(), text, is_train, batch_max_length=self.opt.batch_max_length)
+            prediction = self.Prediction(input.contiguous(), text, is_train, batch_max_length=self.opt.batch_max_length)
 
         return prediction
