@@ -12,10 +12,11 @@ from pytorch_lightning.callbacks import Checkpoint, Callback
 
 
 class TxtRecModule(pl.LightningModule):
-    def __init__(self, model, opt):
+    def __init__(self, encoder, decoder, opt):
         super().__init__()
-        self.save_hyperparameters(ignore=["model"])
-        self.model = model
+        self.save_hyperparameters(ignore=["encoder", "decoder"])
+        self.encoder = encoder
+        self.decoder = decoder
         
         """ setup loss """
         if 'CTC' in self.hparams.opt.Prediction:
@@ -37,7 +38,8 @@ class TxtRecModule(pl.LightningModule):
         image, tensor_label, length = batch
         batch_size = image.size(0)
         if 'CTC' in self.hparams.opt.Prediction:
-            preds = self.model(image, tensor_label)
+            features = self.encoder(image)
+            preds = self.decoder(features, tensor_label)
             preds_size = torch.IntTensor([preds.size(1)] * batch_size)
             if self.hparams.opt.baiduCTC:
                 preds = preds.permute(1, 0, 2)  # to use CTCLoss format
@@ -47,7 +49,8 @@ class TxtRecModule(pl.LightningModule):
                 loss = self.criterion(preds, tensor_label, preds_size, length)
             # TODO: compute accuracy for CTC
         else:
-            preds = self.model(image, tensor_label[:, :-1])  # align with Attention.forward
+            features = self.encoder(image)
+            preds = self.decoder(features, tensor_label[:, :-1])  # align with Attention.forward
             target = tensor_label[:, 1:]  # without [GO] Symbol
             
             preds = preds.view(-1, preds.shape[-1])
@@ -69,7 +72,8 @@ class TxtRecModule(pl.LightningModule):
             self.hparams.opt.batch_max_length + 1).fill_(0).to(device)
 
         if 'CTC' in self.hparams.opt.Prediction:
-            preds = self.model(image, text_for_pred)
+            features = self.encoder(image)
+            preds = self.decoder(features, text_for_pred)
 
             # Calculate evaluation loss for CTC deocder.
             preds_size = torch.IntTensor([preds.size(1)] * batch_size)
@@ -91,7 +95,8 @@ class TxtRecModule(pl.LightningModule):
                     "preds_size": preds_size}
         
         else:
-            preds = self.model(image, text_for_pred, is_train=False)
+            features = self.encoder(image)
+            preds = self.decoder(features, text_for_pred, is_train=False)
 
             preds = preds[:, :text_for_loss.shape[1] - 1, :]
             target = text_for_loss[:, 1:]  # without [GO] Symbol
@@ -112,7 +117,7 @@ class TxtRecModule(pl.LightningModule):
     
     def configure_optimizers(self):
         filtered_parameters = filter(lambda p: p.requires_grad,
-                                     self.model.parameters())
+                                     self.parameters())
         if self.hparams.opt.adam:
             optimizer = optim.Adam(
                 filtered_parameters, 
