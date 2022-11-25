@@ -17,6 +17,8 @@ kaggle = "*"
 importlib-metadata = "*"
 
 [dev-packages]
+torch-tb-profiler = "*"
+tensorboard = "*"
 
 [requires]
 python_version = "3.7"
