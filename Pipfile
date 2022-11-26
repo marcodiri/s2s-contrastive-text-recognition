@@ -15,6 +15,7 @@ pytorch-lightning = "*"
 natsort = "*"
 kaggle = "*"
 importlib-metadata = "*"
+imgaug = "*"
 
 [dev-packages]
 torch-tb-profiler = "*"
