@@ -16,7 +16,7 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.opt = opt
         self.stages = {'Trans': opt.Transformation, 'Feat': opt.FeatureExtraction,
-                       'Seq': opt.SequenceModeling, 'Pred': opt.Prediction}
+                       'Seq': opt.SequenceModeling}
 
         """ Transformation """
         if opt.Transformation == 'TPS':

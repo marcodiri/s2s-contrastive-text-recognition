@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchmetrics
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import Checkpoint, Callback
+from pytorch_lightning.callbacks import Callback
 
 
 class TxtRecModule(pl.LightningModule):
