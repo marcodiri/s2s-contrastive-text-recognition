@@ -3,13 +3,15 @@ import os
 import string
 from os import path
 
+import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
                                          ModelCheckpoint, Timer)
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 
+import config
 from dataset import WordsDataModule
-from model import Encoder, Decoder, TxtRecModule
+from model import Decoder, Encoder, TxtRecModule
 
 
 def train(opt):
@@ -96,7 +98,7 @@ def train(opt):
         save_dir=path.join(opt.save_dir, opt.exp_name, 'csv'))
     
     trainer = Trainer(
-        accelerator="auto",
+        accelerator="auto" if config.device.type=="cuda" else "cpu",
         devices=1,
         benchmark=True,
         max_steps=opt.num_iter,
@@ -125,6 +127,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_dir', default='saved_models', help="path where to save logs and checkpoints")
     parser.add_argument('--saved_model', default='', help="path to Lightning module to continue training; \
         base_model.pth must be present in the same directory")
+    parser.add_argument('--disable_cuda', action='store_true',
+                        help='disable CUDA')
     parser.add_argument('--FT', action='store_true', help='whether to do fine-tuning')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is Adadelta)')
     parser.add_argument('--lr', type=float, default=1, help='learning rate, default=1.0 for Adadelta')
@@ -177,6 +181,11 @@ if __name__ == '__main__':
         # print(opt.exp_name)
 
     os.makedirs(path.join(opt.save_dir, opt.exp_name), exist_ok=True)
+    
+    if not opt.disable_cuda and torch.cuda.is_available():
+        config.device = torch.device('cuda')
+    else:
+        config.device = torch.device('cpu')
 
     """ vocab / character number configuration """
     if opt.sensitive:
