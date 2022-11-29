@@ -27,7 +27,7 @@ class SeqCLRModule(pl.LightningModule):
         self.criterion = nn.CrossEntropyLoss()
         
     def forward(self, X):
-        R = self.base_encoder(X)
+        R = self.base_encoder(X).transpose(1,2)
         
         Z = self.instance_map(R)
         
