@@ -25,37 +25,40 @@ class SeqCLRModule(pl.LightningModule):
             raise ValueError('Only WindowToInstance InstanceMapping is supported')
 
         self.criterion = nn.CrossEntropyLoss()
-        
+    
     def forward(self, X):
-        R = self.base_encoder(X).transpose(1,2)
+        R = self.base_encoder(X)
         
         Z = self.instance_map(R)
         
         # aggregate columns; corresponding frames (positive pairs)
         # will be at (batch_size*opt.mapping_instances) distance
-        Z = Z.transpose(0,1).flatten(start_dim=1)
+        Z = Z.flatten(end_dim=1)
         
         return Z
     
     def compute_loss(self, frames):
+        """Calculate NT-Xent loss.
+        ref: https://github.com/google-research/simclr/blob/2fc637bdd6a723130db91b377ac15151e01e4fc2/tf2/objective.py#L35
+        """
+        
         # cos similarity matrix [batch_size*opt.mapping_instances*2];
         # Example:
         # sim_mat[0,0] = cos_sim(z0_a, z0_a)
         # sim_mat[0,1] = cos_sim(z0_a, z1_a)
         # sim_mat[0,batch_size*opt.mapping_instances] = cos_sim(z0_a, z0_b)
         # sim_mat[batch_size*opt.mapping_instances,0] = cos_sim(z0_b, z0_a)
-        sim_mat = torch.nn.functional.cosine_similarity(
-            frames[:,None,:],
-            frames[:,:,None],
-            dim=0)
+        frames = nn.functional.normalize(frames, dim=-1)
+        sim_mat = torch.mm(frames, frames.transpose(0,1))
         sim_mat /= self.hparams.opt.temperature
+        
         # mask out self cosine similarity
-        self_mask = torch.eye(
+        mask = torch.eye(
             sim_mat.shape[0],
             dtype=torch.bool,
             device=sim_mat.device)
         # big negative to remove self from cross entropy denominator
-        sim_mat.masked_fill_(self_mask, -9e15)
+        sim_mat.masked_fill_(mask, -9e15)
         
         # find positive pair: (batch_size*opt.mapping_instances) away
         # each row is a zX_y and is True at the corrisponding peer column
@@ -64,11 +67,11 @@ class SeqCLRModule(pl.LightningModule):
         # sim_mat[0,1] = False
         # sim_mat[0,batch_size*opt.mapping_instances] = True
         # sim_mat[batch_size*opt.mapping_instances,0] = True
-        pos_mask = self_mask.roll(
+        mask = mask.roll(
             shifts=sim_mat.shape[0]//2,
             dims=0)
         # convert to indices for CrossEntropy
-        labels=pos_mask.nonzero(as_tuple=True)[1]
+        labels=mask.nonzero(as_tuple=True)[1]
         
         return self.criterion(sim_mat, labels)
 
