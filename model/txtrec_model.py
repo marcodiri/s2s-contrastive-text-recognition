@@ -30,8 +30,14 @@ class TxtRecModule(pl.LightningModule):
                 self.criterion = nn.CTCLoss(zero_infinity=True)
         else:
             # ignore [GO] token = ignore index 0
-            self.train_accuracy = torchmetrics.Accuracy(ignore_index=0)
-            self.val_accuracy = torchmetrics.Accuracy(ignore_index=0)
+            self.train_accuracy = torchmetrics.Accuracy(
+                task='multiclass',
+                num_classes=opt.num_class,
+                ignore_index=0)
+            self.val_accuracy = torchmetrics.Accuracy(
+                task='multiclass',
+                num_classes=opt.num_class,
+                ignore_index=0)
             self.criterion = nn.CrossEntropyLoss(ignore_index=0)
             
     def training_step(self, batch, batch_idx):

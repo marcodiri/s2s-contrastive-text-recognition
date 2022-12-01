@@ -13,13 +13,10 @@ kornia = "*"
 torchmetrics = "*"
 pytorch-lightning = "*"
 natsort = "*"
-kaggle = "*"
-importlib-metadata = "*"
-imgaug = "*"
 
 [dev-packages]
 torch-tb-profiler = "*"
 tensorboard = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"
