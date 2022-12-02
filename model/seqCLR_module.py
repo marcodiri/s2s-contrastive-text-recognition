@@ -105,6 +105,8 @@ class SeqCLRModule(pl.LightningModule):
                 optimizer,
                 mode='min',
                 factor=self.hparams.opt.plateau,
+                min_lr=1e-4,
+                cooldown=self.hparams.opt.patience,
                 verbose=True,
                 patience=self.hparams.opt.patience)
             return {
