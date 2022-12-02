@@ -146,6 +146,9 @@ class TxtRecModule(pl.LightningModule):
                 optimizer,
                 mode='max',
                 factor=self.hparams.opt.plateau,
+                min_lr=1e-4,
+                threshold=1e-3,
+                threshold_mode='abs',
                 verbose=True,
                 patience=self.hparams.opt.patience)
             return {
