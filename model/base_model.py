@@ -64,6 +64,11 @@ class Encoder(nn.Module):
             contextual_feature = visual_feature  # for convenience. this is NOT contextually modeled by BiLSTM
 
         return contextual_feature
+    
+    def freeze(self):
+        for param in self.parameters():
+            param.requires_grad = False
+        self.eval()
 
 
 class Decoder(nn.Module):

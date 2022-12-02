@@ -28,19 +28,24 @@ def train(opt):
     
     # Model creation/loading
     encoder = Encoder(opt)
-    if opt.pretrained_encoder != '':
-        model = SeqCLRModule.load_from_checkpoint(
-            opt.pretrained_encoder,
-            strict=False,
-            base_encoder=encoder)
-        model.hparams.opt.save_dir = opt.save_dir
-        if opt.decoder_eval:
-            model.freeze() # lock pre-trained encoder
+    if not opt.saved_model:
+        if opt.pretrained_encoder != '':
+            model = SeqCLRModule.load_from_checkpoint(
+                opt.pretrained_encoder,
+                base_encoder=encoder)
+            model.hparams.opt.save_dir = opt.save_dir
+        else:
+            raise ValueError("No pretrained model specified in --pretrained_encoder argument")
+        decoder = Decoder(encoder.SequenceModeling_output, opt)
+        model = TxtRecModule(encoder, decoder, opt)
     else:
-        raise ValueError("No pretrained model specified in --pretrained_encoder argument")
-    
-    decoder = Decoder(encoder.SequenceModeling_output, opt)
-    model = TxtRecModule(encoder, decoder, opt)
+        decoder = Decoder(encoder.SequenceModeling_output, opt)
+        model = TxtRecModule.load_from_checkpoint(
+                opt.saved_model,
+                encoder=encoder,
+                decoder=decoder)
+    if opt.decoder_eval:
+        encoder.freeze() # lock pre-trained encoder
     
     # Trainer setup + callbacks + loggers
     checkpoint_latest_path = path.join(
@@ -105,7 +110,10 @@ def train(opt):
         log_every_n_steps=50,
         logger=[logger_tb, logger_csv])
     
-    trainer.fit(model, data)
+    if opt.saved_model != '':
+        trainer.fit(model, data, ckpt_path=opt.saved_model)
+    else:
+        trainer.fit(model, data)
 
 
 if __name__ == '__main__':
@@ -119,6 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_iter', type=int, default=300000, help='number of iterations to train for')
     parser.add_argument('--val_interval', type=int, default=8, help='Epochs between each validation')
     parser.add_argument('--save_dir', default='saved_models', help="path where to save logs and checkpoints")
+    parser.add_argument('--saved_model', default='', help="path to Lightning module to continue training")
     parser.add_argument('--pretrained_encoder', default='', help="path to encoder checkpoint")
     parser.add_argument('--disable_cuda', action='store_true',
                         help='disable CUDA')

@@ -125,8 +125,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_iter', type=int, default=300000, help='number of iterations to train for')
     parser.add_argument('--val_interval', type=int, default=8, help='Epochs between each validation')
     parser.add_argument('--save_dir', default='saved_models', help="path where to save logs and checkpoints")
-    parser.add_argument('--saved_model', default='', help="path to Lightning module to continue training; \
-        base_model.pth must be present in the same directory")
+    parser.add_argument('--saved_model', default='', help="path to Lightning module to continue training")
     parser.add_argument('--disable_cuda', action='store_true',
                         help='disable CUDA')
     parser.add_argument('--FT', action='store_true', help='whether to do fine-tuning')
