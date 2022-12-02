@@ -105,7 +105,7 @@ def train(opt):
         check_val_every_n_epoch=opt.val_interval,
         gradient_clip_val=opt.grad_clip,
         callbacks=callbacks,
-        log_every_n_steps=50,
+        log_every_n_steps=opt.log_every_n_steps,
         logger=[logger_tb, logger_csv])
     
     if opt.saved_model != '':
@@ -126,6 +126,8 @@ if __name__ == '__main__':
     parser.add_argument('--val_interval', type=int, default=8, help='Epochs between each validation')
     parser.add_argument('--save_dir', default='saved_models', help="path where to save logs and checkpoints")
     parser.add_argument('--saved_model', default='', help="path to Lightning module to continue training")
+    parser.add_argument('--log_every_n_steps', type=int, default=50,
+                        help="how often to log within steps")
     parser.add_argument('--disable_cuda', action='store_true',
                         help='disable CUDA')
     parser.add_argument('--FT', action='store_true', help='whether to do fine-tuning')
