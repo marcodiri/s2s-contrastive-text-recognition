@@ -149,6 +149,7 @@ class TxtRecModule(pl.LightningModule):
                 min_lr=1e-4,
                 threshold=1e-3,
                 threshold_mode='abs',
+                cooldown=self.hparams.opt.patience,
                 verbose=True,
                 patience=self.hparams.opt.patience)
             return {
