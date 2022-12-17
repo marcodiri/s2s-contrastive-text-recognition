@@ -30,17 +30,10 @@ def train(opt):
     encoder = Encoder(opt)
     decoder = Decoder(encoder.SequenceModeling_output, opt)
     if opt.saved_model != '':
-        if opt.FT:
-            model = TxtRecModule.load_from_checkpoint(
-                opt.saved_model,
-                strict=False,
-                encoder=encoder,
-                decoder=decoder)
-        else:
-            model = TxtRecModule.load_from_checkpoint(
-                opt.saved_model,
-                encoder=encoder,
-                decoder=decoder)
+        model = TxtRecModule.load_from_checkpoint(
+            opt.saved_model,
+            encoder=encoder,
+            decoder=decoder)
         model.hparams.opt.save_dir = opt.save_dir
     else:
         model = TxtRecModule(encoder, decoder, opt)
@@ -130,7 +123,6 @@ if __name__ == '__main__':
                         help="how often to log within steps")
     parser.add_argument('--disable_cuda', action='store_true',
                         help='disable CUDA')
-    parser.add_argument('--FT', action='store_true', help='whether to do fine-tuning')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is Adadelta)')
     parser.add_argument('--lr', type=float, default=1, help='learning rate, default=1.0 for Adadelta')
     parser.add_argument('--plateau', type=float, default=0.1, help='if != 0, \
