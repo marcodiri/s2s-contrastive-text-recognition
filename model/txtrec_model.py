@@ -168,6 +168,9 @@ class TxtRecModule(pl.LightningModule):
         return [compute_metrics]
     
     class _ComputeMetrics(Callback):
+        cumul_correct_words = 0
+        num_preds_till_now = 0
+        
         def on_train_batch_end(self, trainer, pl_module, outputs, batch,
                                batch_idx):
             pl_module.log("train_loss", outputs["loss"], prog_bar=False)
@@ -199,6 +202,9 @@ class TxtRecModule(pl.LightningModule):
             
             preds_prob = F.softmax(outputs["preds"], dim=2)
             preds_max_prob, _ = preds_prob.max(dim=2)
+            
+            batch_size = batch[0].shape[0]
+            batch_correct_words = 0
             self.confidence_score_list = []
             for gt, pred, pred_max_prob in zip(self.labels, self.preds_str, preds_max_prob):
                 if 'Attn' in pl_module.hparams.opt.Prediction:
@@ -222,8 +228,18 @@ class TxtRecModule(pl.LightningModule):
                 except:
                     confidence_score = 0  # for empty pred case, when prune after "end of sentence" token ([s])
                 self.confidence_score_list.append(confidence_score)
+                
+                # calculate words accuracy
+                if pred == gt:
+                    batch_correct_words += 1
+            self.cumul_correct_words += batch_correct_words
+            self.num_preds_till_now += batch_size
         
         def on_validation_epoch_end(self, trainer, pl_module):
+            pl_module.log("cumul_words_acc", self.cumul_correct_words/self.num_preds_till_now)
+            self.cumul_correct_words = 0
+            self.num_preds_till_now = 0
+            
             # show some predicted results
             dashed_line = '-' * 80
             head = f'{"Ground Truth":25s} | {"Prediction":25s} | Confidence Score & T/F'

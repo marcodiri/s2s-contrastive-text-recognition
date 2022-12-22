@@ -162,7 +162,7 @@ if __name__ == '__main__':
     parser.add_argument('--FeatureExtraction', type=str, required=True,
                         help='FeatureExtraction stage. VGG|RCNN|ResNet')
     parser.add_argument('--SequenceModeling', type=str, required=True, help='SequenceModeling stage. None|BiLSTM')
-    parser.add_argument('--InstanceMapping', type=str, required=True, help='Instance Mapping stage. WindowToInstance')
+    parser.add_argument('--InstanceMapping', type=str, required=True, help='Instance Mapping stage. None | WindowToInstance')
     parser.add_argument('--num_fiducial', type=int, default=20, help='number of fiducial points of TPS-STN')
     parser.add_argument('--input_channel', type=int, default=1,
                         help='the number of input channel of Feature extractor')
