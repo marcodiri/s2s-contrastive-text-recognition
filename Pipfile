@@ -10,6 +10,7 @@ torch = "*"
 torchvision = "*"
 pandas = "*"
 kornia = "*"
+importlib_metadata = "*"
 torchmetrics = "*"
 pytorch-lightning = "*"
 natsort = "*"
@@ -17,6 +18,3 @@ natsort = "*"
 [dev-packages]
 torch-tb-profiler = "*"
 tensorboard = "*"
-
-[requires]
-python_version = "3.8"
