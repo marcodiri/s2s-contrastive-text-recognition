@@ -184,7 +184,8 @@ class TxtRecModule(pl.LightningModule):
         
         def on_validation_batch_end(self, trainer, pl_module, outputs, batch,
                                     batch_idx, dataloader_idx):
-            pl_module.log("val_loss", outputs["loss"], prog_bar=False)
+            pl_module.log("val_loss", outputs["loss"],
+                              on_step=False, on_epoch=True, prog_bar=False)
             
             converter = trainer.datamodule.label_converter
             self.labels = converter.decode(
