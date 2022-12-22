@@ -21,15 +21,18 @@ class SeqCLRModule(pl.LightningModule):
         
         if opt.InstanceMapping == "WindowToInstance":
             self.instance_map = WindowToInstance(opt.mapping_instances)
+        elif opt.InstanceMapping == "None":
+            self.instance_map = None
         else:
             raise ValueError('Only WindowToInstance InstanceMapping is supported')
 
         self.criterion = nn.CrossEntropyLoss()
     
     def forward(self, X):
-        R = self.base_encoder(X)
+        Z = self.base_encoder(X)
         
-        Z = self.instance_map(R)
+        if self.instance_map:
+            Z = self.instance_map(Z)
         
         # aggregate columns; corresponding frames (positive pairs)
         # will be at (batch_size*opt.mapping_instances) distance

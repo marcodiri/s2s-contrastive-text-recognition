@@ -4,7 +4,7 @@ from pathlib import Path  # Create directories.
 import os                 # Count the number of files.
 import time
 
-SPLITS = ["train", "val", "test"]
+SPLITS = ["train", "train5pc", "val", "test"]
 
 
 def parse_args():

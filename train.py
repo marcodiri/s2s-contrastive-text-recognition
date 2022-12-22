@@ -30,17 +30,10 @@ def train(opt):
     encoder = Encoder(opt)
     decoder = Decoder(encoder.SequenceModeling_output, opt)
     if opt.saved_model != '':
-        if opt.FT:
-            model = TxtRecModule.load_from_checkpoint(
-                opt.saved_model,
-                strict=False,
-                encoder=encoder,
-                decoder=decoder)
-        else:
-            model = TxtRecModule.load_from_checkpoint(
-                opt.saved_model,
-                encoder=encoder,
-                decoder=decoder)
+        model = TxtRecModule.load_from_checkpoint(
+            opt.saved_model,
+            encoder=encoder,
+            decoder=decoder)
         model.hparams.opt.save_dir = opt.save_dir
     else:
         model = TxtRecModule(encoder, decoder, opt)
