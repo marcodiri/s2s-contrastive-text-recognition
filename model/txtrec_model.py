@@ -179,7 +179,8 @@ class TxtRecModule(pl.LightningModule):
                 # TODO: log accuracy for CTC
                 pass
             else:
-                pl_module.log("train_acc", pl_module.train_accuracy.compute(), prog_bar=False)
+                pl_module.log("train_acc", pl_module.train_accuracy,
+                              on_step=False, on_epoch=True, prog_bar=False)
         
         def on_validation_batch_end(self, trainer, pl_module, outputs, batch,
                                     batch_idx, dataloader_idx):
@@ -195,7 +196,8 @@ class TxtRecModule(pl.LightningModule):
                     outputs["preds_index"].data,
                     outputs["preds_size"].data)
             else:
-                pl_module.log("val_acc", pl_module.val_accuracy.compute(), prog_bar=True)
+                pl_module.log("val_acc", pl_module.val_accuracy,
+                              on_step=False, on_epoch=True, prog_bar=True)
                 self.preds_str = converter.decode(
                     outputs["preds_index"],
                     outputs["length_for_pred"])
