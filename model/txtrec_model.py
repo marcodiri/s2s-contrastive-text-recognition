@@ -20,8 +20,12 @@ class TxtRecModule(pl.LightningModule):
         
         """ setup loss """
         if 'CTC' in self.hparams.opt.Prediction:
-            self.train_accuracy = torchmetrics.Accuracy()
-            self.val_accuracy = torchmetrics.Accuracy()
+            self.train_accuracy = torchmetrics.Accuracy(
+                task='multiclass',
+                num_classes=opt.num_class)
+            self.val_accuracy = torchmetrics.Accuracy(
+                task='multiclass',
+                num_classes=opt.num_class)
             if self.hparams.opt.baiduCTC:
                 # need to install warpctc. see our guideline.
                 from warpctc_pytorch import CTCLoss
