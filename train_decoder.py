@@ -60,8 +60,8 @@ def train(opt):
     checkpoint_best = ModelCheckpoint(
         dirpath=checkpoint_best_path,
         filename='{epoch}-{step}-{train_loss:.2f}-{val_loss:.2f}',
-        monitor='val_loss',
-        mode='min',
+        monitor='val_acc',
+        mode='max',
         save_on_train_epoch_end=False
     )
     checkpoint_latest = ModelCheckpoint(
