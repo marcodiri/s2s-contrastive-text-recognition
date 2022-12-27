@@ -1,0 +1,10 @@
+matplotlib
+lmdb
+torch==1.13.1
+pytorch-lightning==1.8.6
+torchvision
+pandas
+kornia==0.6.8
+torchmetrics==0.11.0
+natsort
+importlib-metadata
