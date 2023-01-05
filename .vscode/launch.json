@@ -1,0 +1,196 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: pretrain.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/pretrain.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--disable_cuda",
+                "--log_every_n_steps", "1",
+                "--train_data", "datasets/lmdb_train_20",
+                "--select_data", "/",
+                "--sensitive",
+                "--batch_size", "5",
+                "--num_iter", "10000",
+                "--lr", "1",
+                "--plateau", "0",
+                "--Transformation", "None", 
+                "--FeatureExtraction", "VGG", 
+                "--SequenceModeling", "BiLSTM",
+                "--InstanceMapping", "WindowToInstance",
+                "--temperature", "0.07"
+            ]
+        },
+        {
+            "name": "Python: pretrain.py from ckpt",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/pretrain.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--disable_cuda",
+                "--saved_model", "saved_models/None-VGG-BiLSTM-None-Seed1111/best/epoch=32-step=8250-train_loss=0.01.ckpt",
+                "--train_data", "datasets/lmdb_val",
+                "--select_data", "/",
+                "--sensitive",
+                "--batch_size", "10",
+                "--num_iter", "10000",
+                "--lr", "1",
+                "--plateau", "0",
+                "--Transformation", "None", 
+                "--FeatureExtraction", "VGG", 
+                "--SequenceModeling", "BiLSTM",
+                "--InstanceMapping", "None",
+                "--temperature", "0.07"
+            ]
+        },
+        {
+            "name": "Python: train_decoder.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_decoder.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--disable_cuda",
+                "--pretrained_encoder", "saved_models/None-VGG-BiLSTM-WindowToInstance-Seed1111/latest/epoch=0-step=4.ckpt",
+                "--decoder_eval",
+                "--train_data", "datasets/lmdb_train_20",
+                "--select_data", "/",
+                "--valid_data", "datasets/lmdb_train_20",
+                "--sensitive",
+                "--batch_size", "5",
+                "--num_iter", "10000",
+                "--val_interval", "8",
+                "--lr", "1",
+                "--plateau", "0",
+                "--Transformation", "None", 
+                "--FeatureExtraction", "VGG", 
+                "--SequenceModeling", "BiLSTM", 
+                "--Prediction", "Attn"
+            ]
+        },
+        {
+            "name": "Python: train_decoder.py from ckpt",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_decoder.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--disable_cuda",
+                "--saved_model", "saved_models/decoder_eval_None-VGG-BiLSTM-Attn-Seed1111/latest/epoch=75-step=14440.ckpt",
+                "--decoder_eval",
+                "--train_data", "datasets/lmdb_train_20",
+                "--select_data", "/",
+                "--valid_data", "datasets/lmdb_train_20",
+                "--sensitive",
+                "--batch_size", "5",
+                "--num_iter", "10000",
+                "--val_interval", "1",
+                "--lr", "1",
+                "--plateau", "0",
+                "--Transformation", "None", 
+                "--FeatureExtraction", "VGG", 
+                "--SequenceModeling", "BiLSTM", 
+                "--Prediction", "Attn"
+            ]
+        },
+        {
+            "name": "Python: train.py all datasets",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--disable_cuda",
+                "--train_data", "datasets/lmdb_train_20",
+                "--select_data", "/",
+                "--valid_data", "datasets/lmdb_train_20",
+                "--sensitive",
+                "--batch_size", "5",
+                "--num_iter", "10000",
+                "--val_interval", "8",
+                "--lr", "1",
+                "--earlystopping",
+                "--Transformation", "None", 
+                "--FeatureExtraction", "VGG",
+                "--SequenceModeling", "BiLSTM",
+                "--Prediction", "Attn"
+            ]
+        },
+        {
+            "name": "Python: train.py from ckpt",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--disable_cuda",
+                "--saved_model", "saved_models/None-VGG-BiLSTM-Attn-Seed1111/latest/epoch=142-step=572.ckpt",
+                "--train_data", "datasets/lmdb_train_20",
+                "--select_data", "/",
+                "--valid_data", "datasets/lmdb_train_20",
+                "--sensitive",
+                "--batch_size", "5",
+                "--num_iter", "10000",
+                "--val_interval", "8",
+                "--lr", "1",
+                "--earlystopping",
+                "--Transformation", "None", 
+                "--FeatureExtraction", "VGG", 
+                "--SequenceModeling", "BiLSTM", 
+                "--Prediction", "Attn"
+            ]
+        },
+        {
+            "name": "Python: predict.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/predict.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--disable_cuda",
+                "--eval_data", "datasets/lmdb_test",
+                "--saved_model", "saved_models/decoder_eval-100pc-NoInstanceMapping/latest/epoch=47-step=9120.ckpt",
+                "--sensitive",
+                "--batch_size", "192",
+                "--Transformation", "None", 
+                "--FeatureExtraction", "VGG", 
+                "--SequenceModeling", "BiLSTM", 
+                "--Prediction", "Attn"
+            ]
+        },
+        {
+            "name": "Python: main.py 2 datasets",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--disable_cuda",
+                "--train_data", "datasets/evaluation",
+                "--select_data", "CUTE80-SVTP",
+                "--valid_data", "datasets/evaluation",
+                "--batch_ratio", "0.8-0.2",
+                "--sensitive",
+                "--Transformation", "None", 
+                "--FeatureExtraction", "ResNet", 
+                "--SequenceModeling", "BiLSTM", 
+                "--Prediction", "Attn"
+            ]
+        }
+    ]
+}
