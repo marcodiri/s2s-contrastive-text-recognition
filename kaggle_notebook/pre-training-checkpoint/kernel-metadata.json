@@ -1,0 +1,13 @@
+{
+  "id": "marcodiri/pre-training",
+  "title": "pre-training",
+  "code_file": "pre-training.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "dataset_sources": ["sukhandeepshergill/iamdatasethtrwords"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
